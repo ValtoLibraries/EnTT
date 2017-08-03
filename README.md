@@ -15,7 +15,7 @@ ECS is an architectural pattern used mostly in game development. For further det
 
 ## Code Example
 
-```
+```cpp
 #include <iostream>
 #include <registry.hpp>
 
@@ -72,12 +72,6 @@ int main() {
         std::cout << position.x << "," << position.y << " - " << velocity.dx << "," << velocity.dy << std::endl;
         if(entity % 4) { ecs.remove<Velocity>(entity); }
         else { ecs.destroy(entity); }
-    }
-
-    std::cout << "filtered component view" << std::endl;
-
-    for(auto entity: ecs.view<Position>().exclude<Velocity>()) {
-        std::cout << (registry.has<Position>(entity)) << "/" << (registry.has<Velocity>(entity)) << std::endl;
     }
 
     ecs.reset();
@@ -145,7 +139,9 @@ CMake version 3.4 or later is mandatory to compile the tests, you don't have to 
 `EnTT` is a header-only library. This means that including the `registry.hpp` header is enough to use it.<br/>
 It's a matter of adding the following line at the top of a file:
 
-    #include <registry.hpp>
+```cpp
+#include <registry.hpp>
+```
 
 Then pass the proper `-I` argument to the compiler to add the `src` directory to the include paths.<br/>
 
@@ -164,7 +160,7 @@ There are three options to instantiate your own registry:
 
 * By using the default one:
 
-    ```
+    ```cpp
     auto registry = entt::DefaultRegistry<Components...>{args...};
     ```
 
@@ -172,7 +168,7 @@ There are three options to instantiate your own registry:
 
 * By using the standard one:
 
-    ```
+    ```cpp
     auto registry = entt::StandardRegistry<std::uint16_t, Components...>{args...};
     ```
 
@@ -180,7 +176,7 @@ There are three options to instantiate your own registry:
 
 * By using your own pool:
 
-    ```
+    ```cpp
     auto registry = entt::Registry<DesiredEntityType, YourOwnPool<Components...>>{args...};
     ```
 
@@ -221,11 +217,10 @@ There are three different kinds of view, each one with a slighlty different inte
 
 * The _single component view_.
 * The _multi component view_.
-* The _filtered view_.
 
 All of them are iterable. In other terms they have `begin` and `end` member functions that are suitable for a range-based for loop:
 
-```
+```cpp
 auto view = registry.view<Position, Velocity>();
 
 for(auto entity: view) {
@@ -249,17 +244,6 @@ The single component view has an additional member function:
 The multi component view has an additional member function:
 
 * `reset()`: reorganizes internal data so as to further create optimized iterators (use it whenever the data within the registry are known to be changed).
-
-A filtered view is nothing more than a multi component view with an additional set of components that act as filters.<br/>
-Users can create filtered views either from a single component view or from a multi component view by means of the `exclude` member function:
-
-```
-auto view = registry.view<Position>().exclude<Velocity>();
-
-for(auto entity: view) {
-    // do whatever you want with your entities
-}
-```
 
 All the views can be used more than once. They return newly created and correctly initialized iterators whenever
 `begin` or `end` is invoked. Anyway views and iterators are tiny objects and the time to construct them can be safely ignored.
@@ -295,7 +279,7 @@ concurrently on a separate thread if needed.
 Custom pools for a given component can be defined as a specialization of the class template `ComponentPool`.<br/>
 In particular:
 
-```
+```cpp
 template<>
 struct ComponentPool<Entity, MyComponent> final {
     // ...
@@ -327,7 +311,7 @@ In cases when the per-component pools are not good enough, the registry can be i
 In other terms, `entt::Registry` has a template template parameter that can be used to provide both the pool and the list of
 components:
 
-```
+```cpp
 auto registry = entt::Registry<Entity, MyCustomPool<Component1, Component2>>{};
 ```
 
