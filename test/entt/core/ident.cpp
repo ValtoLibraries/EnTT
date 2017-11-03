@@ -1,5 +1,6 @@
+#include <type_traits>
 #include <gtest/gtest.h>
-#include <ident.hpp>
+#include <entt/core/ident.hpp>
 
 struct A {};
 struct B {};
@@ -23,4 +24,10 @@ TEST(Identifier, Uniqueness) {
     case ID.get<B>():
         SUCCEED();
     }
+}
+
+TEST(Identifier, SingleType) {
+    constexpr auto ID = entt::ident<A>;
+    std::integral_constant<decltype(ID)::identifier_type, ID.get()> ic;
+    (void)ic;
 }
