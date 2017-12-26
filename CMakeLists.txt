@@ -16,7 +16,7 @@ endif()
 # Project configuration
 #
 
-project(entt VERSION 2.1.0)
+project(entt VERSION 2.3.0)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
@@ -55,14 +55,10 @@ if(NOT MSVC)
 endif()
 
 #
-# CMake configuration
+# Include EnTT
 #
 
-set(PROJECT_CMAKE_IN ${entt_SOURCE_DIR}/cmake/in)
-set(PROJECT_DEPS_DIR ${entt_SOURCE_DIR}/deps)
-set(PROJECT_SRC_DIR ${entt_SOURCE_DIR}/src)
-
-set(PROJECT_RUNTIME_OUTPUT_DIRECTORY bin)
+include_directories(${entt_SOURCE_DIR}/src)
 
 #
 # Tests
@@ -74,9 +70,12 @@ if(BUILD_TESTING)
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads REQUIRED)
 
+    option(BUILD_BENCHMARK "Build benchmark." OFF)
+    option(BUILD_MOD "Build mod example." OFF)
+
     # gtest, gtest_main, gmock and gmock_main targets are available from now on
-    set(GOOGLETEST_DEPS_DIR ${PROJECT_DEPS_DIR}/googletest)
-    configure_file(${PROJECT_CMAKE_IN}/googletest.in ${GOOGLETEST_DEPS_DIR}/CMakeLists.txt)
+    set(GOOGLETEST_DEPS_DIR ${entt_SOURCE_DIR}/deps/googletest)
+    configure_file(${entt_SOURCE_DIR}/cmake/in/googletest.in ${GOOGLETEST_DEPS_DIR}/CMakeLists.txt)
     execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" . WORKING_DIRECTORY ${GOOGLETEST_DEPS_DIR})
     execute_process(COMMAND ${CMAKE_COMMAND} --build . WORKING_DIRECTORY ${GOOGLETEST_DEPS_DIR})
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
@@ -95,3 +94,17 @@ find_package(Doxygen 1.8)
 if(DOXYGEN_FOUND)
     add_subdirectory(docs)
 endif()
+
+#
+# AOB
+#
+
+add_custom_target(
+    entt_aob
+    SOURCES
+        appveyor.yml
+        AUTHORS
+        LICENSE
+        README.md
+        .travis.yml
+)

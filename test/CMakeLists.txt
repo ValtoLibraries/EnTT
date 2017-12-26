@@ -2,20 +2,31 @@
 # Tests configuration
 #
 
-include_directories(${PROJECT_SRC_DIR})
-
 add_library(odr OBJECT odr.cpp)
 
 # Test benchmark
 
-if(CMAKE_BUILD_TYPE MATCHES Release)
+if(BUILD_BENCHMARK)
     add_executable(
         benchmark
         $<TARGET_OBJECTS:odr>
-        entt/entity/benchmark.cpp
+        benchmark/benchmark.cpp
     )
     target_link_libraries(benchmark PRIVATE gtest_main Threads::Threads)
     add_test(NAME benchmark COMMAND benchmark)
+endif()
+
+# Test mod
+
+if(BUILD_MOD)
+    add_executable(
+        mod
+        $<TARGET_OBJECTS:odr>
+        mod/duktape.c
+        mod/mod.cpp
+    )
+    target_link_libraries(mod PRIVATE gtest_main Threads::Threads m)
+    add_test(NAME mod COMMAND mod)
 endif()
 
 # Test core
@@ -24,6 +35,7 @@ add_executable(
     core
     $<TARGET_OBJECTS:odr>
     entt/core/family.cpp
+    entt/core/hashed_string.cpp
     entt/core/ident.cpp
 )
 target_link_libraries(core PRIVATE gtest_main Threads::Threads)
@@ -34,6 +46,7 @@ add_test(NAME core COMMAND core)
 add_executable(
     entity
     $<TARGET_OBJECTS:odr>
+    entt/entity/actor.cpp
     entt/entity/registry.cpp
     entt/entity/sparse_set.cpp
     entt/entity/view.cpp
@@ -51,7 +64,28 @@ add_executable(
 target_link_libraries(locator PRIVATE gtest_main Threads::Threads)
 add_test(NAME locator COMMAND locator)
 
-# Test locator
+# Test process
+
+add_executable(
+    process
+    $<TARGET_OBJECTS:odr>
+    entt/process/process.cpp
+    entt/process/scheduler.cpp
+)
+target_link_libraries(process PRIVATE gtest_main Threads::Threads)
+add_test(NAME process COMMAND process)
+
+# Test resource
+
+add_executable(
+    resource
+    $<TARGET_OBJECTS:odr>
+    entt/resource/resource.cpp
+)
+target_link_libraries(resource PRIVATE gtest_main Threads::Threads)
+add_test(NAME resource COMMAND resource)
+
+# Test signal
 
 add_executable(
     signal

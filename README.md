@@ -21,6 +21,11 @@ a while the codebase has grown and more and more classes have become part
 of the repository.<br/>
 That's why today it's called _the EnTT Framework_.
 
+Currently, `EnTT` is tested on Linux, Microsoft Windows and OS X. It has proven
+to work also on both Android and iOS.<br/>
+Most likely it will not be problematic on other systems as well, but has not
+been sufficiently tested so far.
+
 ## The framework
 
 `EnTT` was written initially as a faster alternative to other well known and
@@ -42,13 +47,17 @@ Here is a brief list of what it offers today:
 
 * Statically generated integer identifiers for types (assigned either at
 compile-time or at runtime).
+* A constexpr utility for human readable resource identifiers.
 * An incredibly fast entity-component system based on sparse sets, with its own
 views and a _pay for what you use_ policy to adjust performance and memory
 pressure according to the users' requirements.
+* Actor class for those who aren't confident with entity-component systems.
+* The smallest and most basic implementation of a service locator ever seen.
+* A cooperative scheduler for processes of any type.
+* All what is needed for resource management (cache, loaders, handles).
 * Signal handlers of any type, delegates and an event bus.
 * A general purpose event emitter, that is a CRTP idiom based class template.
 * An event dispatcher for immediate and delayed events to integrate in loops.
-* The smallest and most basic implementation of a service locator ever seen.
 * ...
 * Any other business.
 
@@ -127,7 +136,7 @@ int main() {
 I started working on `EnTT` because of the wrong reason: my goal was to design
 an entity-component system that beated another well known open source solution
 in terms of performance.<br/>
-I did it, of course, but it wasn't much satisfying. Actually it wasn't
+In the end, I did it, but it wasn't much satisfying. Actually it wasn't
 satisfying at all. The fastest and nothing more, fairly little indeed. When I
 realized it, I tried hard to keep intact the great performance of `EnTT` and to
 add all the features I wanted to see in *my* entity-component system at the same
@@ -140,27 +149,27 @@ of course.
 ## Performance
 
 As it stands right now, `EnTT` is just fast enough for my requirements if
-compared to my first choice (that was already amazingly fast indeed).<br/>
+compared to my first choice (it was already amazingly fast actually).<br/>
 Here is a comparision between the two (both of them compiled with GCC 7.2.0 on a
 Dell XPS 13 out of the mid 2014):
 
-| Benchmark | EntityX (experimental/compile_time) | EnTT |
+| Benchmark | EntityX (compile-time) | EnTT |
 |-----------|-------------|-------------|
-| Creating 10M entities | 0.128881s | **0.0408754s** |
-| Destroying 10M entities | **0.0531374s** | 0.0545839s |
-| Iterating over 10M entities, unpacking one component, standard view | 0.010661s | **1.58e-07s** |
-| Iterating over 10M entities, unpacking two components, standard view | **0.0112664s** | 0.0840068s |
-| Iterating over 10M entities, unpacking two components, standard view, half of the entities have all the components | **0.0077951s** | 0.042168s |
-| Iterating over 10M entities, unpacking two components, standard view, one of the entities has all the components | 0.00713398s | **8.93e-07s** |
-| Iterating over 10M entities, unpacking two components, persistent view | 0.0112664s | **5.68e-07s** |
-| Iterating over 10M entities, unpacking five components, standard view | **0.00905084s** | 0.137757s |
-| Iterating over 10M entities, unpacking five components, persistent view | 0.00905084s | **2.9e-07s** |
-| Iterating over 10M entities, unpacking ten components, standard view | **0.0104708s** | 0.388602s |
-| Iterating over 10M entities, unpacking ten components, standard view, half of the entities have all the components | **0.00899859s** | 0.200752s |
-| Iterating over 10M entities, unpacking ten components, standard view, one of the entities has all the components | 0.00700349s | **2.565e-06s** |
-| Iterating over 10M entities, unpacking ten components, persistent view | 0.0104708s | **6.23e-07s** |
-| Sort 150k entities, one component | - | **0.0080046s** |
-| Sort 150k entities, match two components | - | **0.00608322s** |
+| Create 10M entities | 0.1289s | **0.0409s** |
+| Destroy 10M entities | **0.0531s** | 0.0546s |
+| Standard view, 10M entities, one component | 0.0107s | **1.6e-07s** |
+| Standard view, 10M entities, two components | **0.0113s** | 0.0295s |
+| Standard view, 10M entities, two components<br/>Half of the entities have all the components | **0.0078s** | 0.0150s |
+| Standard view, 10M entities, two components<br/>One of the entities has all the components | 0.0071s | **8.8e-07s** |
+| Persistent view, 10M entities, two components | 0.0113s | **5.7e-07s** |
+| Standard view, 10M entities, five components | **0.0091s** | 0.0688s |
+| Persistent view, 10M entities, five components | 0.0091s | **2.9e-07s** |
+| Standard view, 10M entities, ten components | **0.0105s** | 0.1403s |
+| Standard view, 10M entities, ten components<br/>Half of the entities have all the components | **0.0090s** | 0.0620s |
+| Standard view, 10M entities, ten components<br/>One of the entities has all the components | 0.0070s | **1.3e-06s** |
+| Persistent view, 10M entities, ten components | 0.0105s | **6.2e-07s** |
+| Sort 150k entities, one component<br/>Arrays are in reverse order | - | **0.0043s** |
+| Sort 150k entities, enforce permutation<br/>Arrays are in reverse order | - | **0.0006s** |
 
 `EnTT` includes its own tests and benchmarks. See
 [benchmark.cpp](https://github.com/skypjack/entt/blob/master/test/benchmark.cpp)
@@ -169,8 +178,8 @@ On Github users can find also a
 [benchmark suite](https://github.com/abeimler/ecs_benchmark) that compares a
 bunch of different projects, one of which is `EnTT`.
 
-Of course, probably I'll try to get out of `EnTT` more features and better
-performance in the future, mainly for fun.<br/>
+Probably I'll try to get out of `EnTT` more features and better performance in
+the future, mainly for fun.<br/>
 If you want to contribute and/or have any suggestion, feel free to make a PR or
 open an issue to discuss your idea.
 
@@ -247,11 +256,29 @@ Benchmarks are compiled only in release mode currently.
 
 ## Design choices
 
+### A bitset-free entity-component system
+
+`EnTT` is a _bitset-free_ entity-component system that doesn't require users to
+specify the component set at compile-time.<br/>
+This is why users can instantiate the core class simply like:
+
+```cpp
+entt::DefaultRegistry registry;
+```
+
+In place of its more annoying and error-prone counterpart:
+
+```cpp
+entt::DefaultRegistry<Comp0, Comp1, ..., CompN> registry;
+```
+
+### Pay per use
+
 `EnTT` is entirely designed around the principle that users have to pay only for
 what they want.
 
-When it comes to use an entity-componet system, the tradeoff is usually between
-performance and memory usage. The faster it is, the more memory it uses.
+When it comes to using an entity-componet system, the tradeoff is usually
+between performance and memory usage. The faster it is, the more memory it uses.
 However, slightly worse performance along non-critical paths are the right price
 to pay to reduce memory usage and I've always wondered why this kind of tools do
 not leave me the choice.<br/>
@@ -262,7 +289,7 @@ The disadvantage of this approach is that users need to know the systems they
 are working on and the tools they are using. Otherwise, the risk to ruin the
 performance along critical paths is high.
 
-So far, this choice has proved to be a good one and I really hope it can be for
+So far, this choice has proven to be a good one and I really hope it can be for
 many others besides me.
 
 ## Vademecum
@@ -370,8 +397,8 @@ velocity.dy = 0.;
 
 In case users want to assign a component to an entity, but it's unknown whether
 the entity already has it or not, `accomodate` does the work in a single call
-(there is a performance penalty to pay for that mainly due to the fact that it
-must check if `entity` already has the given component or not):
+(there is a performance penalty to pay for this mainly due to the fact that it
+has to check if `entity` already has the given component or not):
 
 ```cpp
 registry.accomodate<Position>(entity, 0., 0.);
@@ -411,7 +438,7 @@ registry.remove<Position>(entity);
 
 Otherwise consider to use the `reset` member function. It behaves similarly to
 `remove` but with a strictly defined behaviour (and a performance penalty is the
-price to pay for that). In particular it removes the component if and only if it
+price to pay for this). In particular it removes the component if and only if it
 exists, otherwise it returns safely to the caller:
 
 ```cpp
@@ -434,11 +461,11 @@ their components are destroyed:
   registry.reset();
   ```
 
-Finally, references to components can be retrieved by just doing this:
+Finally, references to components can be retrieved simply by doing this:
 
 ```cpp
 // either a non-const reference ...
-DefaultRegistry registry;
+entt::DefaultRegistry registry;
 auto &position = registry.get<Position>(entity);
 
 // ... or a const one
@@ -448,6 +475,118 @@ const auto &position = cregistry.get<Position>(entity);
 
 The `get` member function template gives direct access to the component of an
 entity stored in the underlying data structures of the registry.
+
+### Single instance components
+
+In those cases where all what is needed is a single instance component, tags are
+the right tool to achieve the purpose.<br/>
+Tags undergo the same requirements of components. They can be either plain old
+data structures or more complex and moveable data structures with a proper
+constructor.<br/>
+Actually, the same type can be used both as a tag and as a component and the
+registry will not complain about it. It is up to the users to properly manage
+their own types.
+
+Attaching tags to entities and removing them is trivial:
+
+```cpp
+auto player = registry.create();
+auto camera = registry.create();
+
+// attaches a default-initialized tag to an entity
+registry.attach<PlayingCharacter>(player);
+
+// attaches a tag to an entity and initializes it
+registry.attach<Camera>(camera, player);
+
+// removes tags from their owners
+registry.remove<PlayingCharacter>();
+registry.remove<Camera>();
+```
+
+If in doubt about whether or not a tag has already an owner, the `has` member
+function template may be useful:
+
+```cpp
+bool b = registry.has<PlayingCharacter>();
+```
+
+References to tags can be retrieved simply by doing this:
+
+```cpp
+// either a non-const reference ...
+entt::DefaultRegistry registry;
+auto &player = registry.get<PlayingCharacter>();
+
+// ... or a const one
+const auto &cregistry = registry;
+const auto &camera = cregistry.get<Camera>();
+```
+
+The `get` member function template gives direct access to the tag as stored in
+the underlying data structures of the registry.
+
+As shown above, in almost all the cases the entity identifier isn't required,
+since a single instance component can have only one associated entity and
+therefore it doesn't make much sense to mention it explicitly.<br/>
+To find out who the owner is, just do the following:
+
+```cpp
+auto player = registry.attachee<PlayingCharacter>();
+```
+
+Note that iterating tags isn't possible for obvious reasons. Tags give direct
+access to single entities and nothing more.
+
+### Runtime components
+
+Defining components at runtime is useful to support plugins and mods in general.
+However, it seems impossible with a tool designed around a bunch of templates.
+Indeed it's not that difficult.<br/>
+Of course, some features cannot be easily exported into a runtime
+environment. As an example, sorting a group of components defined at runtime
+isn't for free if compared to most of the other operations. However, the basic
+functionalities of an entity-component system such as `EnTT` fit the problem
+perfectly and can also be used to manage runtime components if required.<br/>
+All that is necessary to do it is to know the identifiers of the components. An
+identifier is nothing more than a number or similar that can be used at runtime
+to work with the type system.
+
+In `EnTT`, identifiers are easily accessible:
+
+```cpp
+entt::DefaultRegistry registry;
+
+// standard component identifier
+auto ctype = registry.component<Position>();
+
+// single instance component identifier
+auto ttype = registry.tag<PlayingCharacter>();
+```
+
+Once the identifiers are made available, almost everything becomes pretty
+simple.
+
+#### A journey through a plugin
+
+`EnTT` comes with an example (actually a test) that shows how to integrate
+compile-time and runtime components in a stack based JavaScript environment. It
+uses [`duktape`](https://github.com/svaarala/duktape) under the hood, mainly
+because I wanted to learn how it works at the time I was writing the code.
+
+It's not production-ready and overall performance can be highly improved.
+However, I sacrificed optimizations in favor of a more readable piece of
+code. I hope I succeeded.<br/>
+Note also that this isn't neither the only nor (probably) the best way to do it.
+In fact, the right way depends on the scripting language and the problem one is
+facing in general.
+
+The basic idea is that of creating a compile-time component aimed to map all the
+runtime components assigned to an entity.<br/>
+Identifiers come in use to address the right function from a map when invoked
+from the runtime environment and to filter entities when iterating.<br/>
+With a bit of gymnastic, one can narrow views and improve the performance to
+some extent but it was not the goal of the example.
 
 ### Sorting: is it possible?
 
@@ -701,6 +840,28 @@ whether all the components have to be accessed or not.
 function template of a registry during iterations, if possible. However, keep in
 mind that it works only with the components of the view itself.
 
+### Give me everything
+
+Views are narrow windows on the entire list of entities. They work by filtering
+entities according to their components.<br/>
+In some cases there may be the need to iterate all the entities regardless of
+their components. The registry offers a specific member function to do that:
+
+```cpp
+registry.each([](auto entity) {
+    // ...
+});
+```
+
+Each entity ever created is returned, no matter if it's in use or not.<br/>
+Usually, filtering entities that aren't currently in use is more expensive than
+iterating them all and filtering out those in which one isn't interested.
+
+As a rule of thumb, consider using a view if the goal is to iterate entities
+that have a determinate set of components. A view is usually faster than
+combining this function with a bunch of custom tests.<br/>
+In all the other cases, this is the way to go.
+
 ## Side notes
 
 * Entity identifiers are numbers and nothing more. They are not classes and they
@@ -710,7 +871,7 @@ mind that it works only with the components of the view itself.
 * As shown in the examples above, the preferred way to get references to the
   components while iterating a view is by using the view itself. It's a faster
   alternative to the `get` member function template that is part of the API of
-  the Registry. That's because the registry must ensure that a pool for the
+  the Registry. This is because the registry must ensure that a pool for the
   given component exists before to use it; on the other side, views force the
   construction of the pools for all their components and access them directly,
   thus avoiding all the checks.

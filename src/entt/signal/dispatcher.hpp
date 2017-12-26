@@ -40,8 +40,8 @@ class Dispatcher final {
 
     template<typename Event>
     struct SignalWrapper final: BaseSignalWrapper {
-        void publish(std::size_t current) final override {
-            for(auto &&event: events[current]) {
+        void publish(std::size_t current) override {
+            for(const auto &event: events[current]) {
                 signal.publish(event);
             }
 
@@ -79,7 +79,7 @@ class Dispatcher final {
 
     template<typename Event>
     SignalWrapper<Event> & wrapper() {
-        auto type = event_family::type<Event>();
+        const auto type = event_family::type<Event>();
 
         if(!(type < wrappers.size())) {
             wrappers.resize(type + 1);
@@ -93,23 +93,10 @@ class Dispatcher final {
     }
 
 public:
-    /*! @brief Default constructor, explicit on purpose. */
-    explicit Dispatcher() noexcept
+    /*! @brief Default constructor. */
+    Dispatcher() noexcept
         : wrappers{}, mode{false}
     {}
-
-    /*! @brief Default destructor. */
-    ~Dispatcher() = default;
-
-    /*! @brief Default copy constructor. */
-    Dispatcher(const Dispatcher &) = default;
-    /*! @brief Default move constructor. */
-    Dispatcher(Dispatcher &&) = default;
-
-    /*! @brief Default copy assignment operator. @return This dispatcher. */
-    Dispatcher & operator=(const Dispatcher &) = default;
-    /*! @brief Default move assignment operator. @return This dispatcher. */
-    Dispatcher & operator=(Dispatcher &&) = default;
 
     /**
      * @brief Registers a listener given in the form of a member function.
@@ -191,7 +178,7 @@ public:
      * to reduce at a minimum the time spent in the bodies of the listeners.
      */
     void update() {
-        auto buf = buffer(mode);
+        const auto buf = buffer(mode);
         mode = !mode;
 
         for(auto &&wrapper: wrappers) {
