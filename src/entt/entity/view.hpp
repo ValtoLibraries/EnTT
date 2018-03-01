@@ -2,9 +2,11 @@
 #define ENTT_ENTITY_VIEW_HPP
 
 
+#include <array>
 #include <tuple>
 #include <utility>
 #include <algorithm>
+#include <type_traits>
 #include "sparse_set.hpp"
 
 
@@ -58,6 +60,7 @@ class PersistentView final {
     using pool_type = SparseSet<Entity, Comp>;
 
     using view_type = SparseSet<Entity>;
+    using pattern_type = std::tuple<pool_type<Component> &...>;
 
 public:
     /*! Input iterator type. */
@@ -189,6 +192,52 @@ public:
     }
 
     /**
+     * @brief Returns the components assigned to the given entity.
+     *
+     * Prefer this function instead of `Registry::get` during iterations. It has
+     * far better performance than its companion function.
+     *
+     * @warning
+     * Attempting to use invalid component types results in a compilation error.
+     * Attempting to use an entity that doesn't belong to the view results in
+     * undefined behavior.<br/>
+     * An assertion will abort the execution at runtime in debug mode if
+     * the view doesn't contain the given entity.
+     *
+     * @tparam Comp Types of the components to get.
+     * @param entity A valid entity identifier.
+     * @return The components assigned to the entity.
+     */
+    template<typename... Comp>
+    std::enable_if_t<(sizeof...(Comp) > 1), std::tuple<const Comp &...>>
+    get(entity_type entity) const noexcept {
+        return std::tuple<const Comp &...>{ get<Comp>(entity)... };
+    }
+
+    /**
+     * @brief Returns the components assigned to the given entity.
+     *
+     * Prefer this function instead of `Registry::get` during iterations. It has
+     * far better performance than its companion function.
+     *
+     * @warning
+     * Attempting to use invalid component types results in a compilation error.
+     * Attempting to use an entity that doesn't belong to the view results in
+     * undefined behavior.<br/>
+     * An assertion will abort the execution at runtime in debug mode if
+     * the view doesn't contain the given entity.
+     *
+     * @tparam Comp Types of the components to get.
+     * @param entity A valid entity identifier.
+     * @return The components assigned to the entity.
+     */
+    template<typename... Comp>
+    std::enable_if_t<(sizeof...(Comp) > 1), std::tuple<Comp &...>>
+    get(entity_type entity) noexcept {
+        return std::tuple<Comp &...>{ get<Comp>(entity)... };
+    }
+
+    /**
      * @brief Iterate the entities and applies them the given function object.
      *
      * The function object is invoked for each entity. It is provided with the
@@ -255,7 +304,7 @@ public:
 
 private:
     view_type &view;
-    std::tuple<pool_type<Component> &...> pools;
+    pattern_type pools;
 };
 
 
@@ -304,25 +353,23 @@ class View final {
     template<typename Comp>
     using pool_type = SparseSet<Entity, Comp>;
 
-    using base_pool_type = SparseSet<Entity>;
-    using underlying_iterator_type = typename base_pool_type::iterator_type;
-    using repo_type = std::tuple<pool_type<Component> &...>;
+    using view_type = SparseSet<Entity>;
+    using underlying_iterator_type = typename view_type::iterator_type;
+    using unchecked_type = std::array<const view_type *, (sizeof...(Component) - 1)>;
+    using pattern_type = std::tuple<pool_type<Component> &...>;
 
     class Iterator {
         inline bool valid() const noexcept {
-            using accumulator_type = bool[];
-            auto entity = *begin;
-            bool all = true;
-            accumulator_type accumulator =  { all, (all = all && std::get<pool_type<Component> &>(pools).has(entity))... };
-            (void)accumulator;
-            return all;
+            auto i = unchecked.size();
+            for(const auto entity = *begin; i && unchecked[i-1]->has(entity); --i);
+            return !i;
         }
 
     public:
-        using value_type = typename base_pool_type::entity_type;
+        using value_type = typename view_type::entity_type;
 
-        Iterator(const repo_type &pools, underlying_iterator_type begin, underlying_iterator_type end) noexcept
-            : pools{pools}, begin{begin}, end{end}
+        Iterator(unchecked_type unchecked, underlying_iterator_type begin, underlying_iterator_type end) noexcept
+            : unchecked{unchecked}, begin{begin}, end{end}
         {
             if(begin != end && !valid()) {
                 ++(*this);
@@ -330,9 +377,7 @@ class View final {
         }
 
         Iterator & operator++() noexcept {
-            ++begin;
-            while(begin != end && !valid()) { ++begin; }
-            return *this;
+            return (++begin != end && !valid()) ? ++(*this) : *this;
         }
 
         Iterator operator++(int) noexcept {
@@ -353,7 +398,7 @@ class View final {
         }
 
     private:
-        const repo_type &pools;
+        unchecked_type unchecked;
         underlying_iterator_type begin;
         underlying_iterator_type end;
     };
@@ -362,16 +407,16 @@ public:
     /*! Input iterator type. */
     using iterator_type = Iterator;
     /*! @brief Underlying entity identifier. */
-    using entity_type = typename base_pool_type::entity_type;
+    using entity_type = typename view_type::entity_type;
     /*! @brief Unsigned integer type. */
-    using size_type = typename base_pool_type::size_type;
+    using size_type = typename view_type::size_type;
 
     /**
      * @brief Constructs a view out of a bunch of pools of components.
      * @param pools References to pools of components.
      */
     View(pool_type<Component>&... pools) noexcept
-        : pools{pools...}, view{nullptr}
+        : pools{pools...}, view{nullptr}, unchecked{}
     {
         reset();
     }
@@ -391,7 +436,7 @@ public:
      * @return An iterator to the first entity that has the given components.
      */
     iterator_type begin() const noexcept {
-        return Iterator{pools, view->begin(), view->end()};
+        return Iterator{unchecked, view->begin(), view->end()};
     }
 
     /**
@@ -410,7 +455,7 @@ public:
      * given components.
      */
     iterator_type end() const noexcept {
-        return Iterator{pools, view->end(), view->end()};
+        return Iterator{unchecked, view->end(), view->end()};
     }
 
     /**
@@ -455,6 +500,52 @@ public:
     template<typename Comp>
     Comp & get(entity_type entity) noexcept {
         return const_cast<Comp &>(const_cast<const View *>(this)->get<Comp>(entity));
+    }
+
+    /**
+     * @brief Returns the components assigned to the given entity.
+     *
+     * Prefer this function instead of `Registry::get` during iterations. It has
+     * far better performance than its companion function.
+     *
+     * @warning
+     * Attempting to use invalid component types results in a compilation error.
+     * Attempting to use an entity that doesn't belong to the view results in
+     * undefined behavior.<br/>
+     * An assertion will abort the execution at runtime in debug mode if
+     * the view doesn't contain the given entity.
+     *
+     * @tparam Comp Types of the components to get.
+     * @param entity A valid entity identifier.
+     * @return The components assigned to the entity.
+     */
+    template<typename... Comp>
+    std::enable_if_t<(sizeof...(Comp) > 1), std::tuple<const Comp &...>>
+    get(entity_type entity) const noexcept {
+        return std::tuple<const Comp &...>{ get<Comp>(entity)... };
+    }
+
+    /**
+     * @brief Returns the components assigned to the given entity.
+     *
+     * Prefer this function instead of `Registry::get` during iterations. It has
+     * far better performance than its companion function.
+     *
+     * @warning
+     * Attempting to use invalid component types results in a compilation error.
+     * Attempting to use an entity that doesn't belong to the view results in
+     * undefined behavior.<br/>
+     * An assertion will abort the execution at runtime in debug mode if
+     * the view doesn't contain the given entity.
+     *
+     * @tparam Comp Types of the components to get.
+     * @param entity A valid entity identifier.
+     * @return The components assigned to the entity.
+     */
+    template<typename... Comp>
+    std::enable_if_t<(sizeof...(Comp) > 1), std::tuple<Comp &...>>
+    get(entity_type entity) noexcept {
+        return std::tuple<Comp &...>{ get<Comp>(entity)... };
     }
 
     /**
@@ -513,15 +604,28 @@ public:
      */
     void reset() {
         using accumulator_type = size_type[];
-        auto probe = [this](auto sz, auto &pool) { return pool.size() < sz ? (view = &pool, pool.size()) : sz; };
         size_type sz = std::max({ std::get<pool_type<Component> &>(pools).size()... }) + std::size_t{1};
-        accumulator_type accumulator = { sz, (sz = probe(sz, std::get<pool_type<Component> &>(pools)))... };
-        (void)accumulator;
+        size_type pos{};
+
+        auto probe = [this](auto sz, const auto &pool) {
+            return pool.size() < sz ? (view = &pool, pool.size()) : sz;
+        };
+
+        auto filter = [this](auto pos, const auto &pool) {
+            return (view != &pool) ? (unchecked[pos++] = &pool, pos) : pos;
+        };
+
+        accumulator_type probing = { (sz = probe(sz, std::get<pool_type<Component> &>(pools)))... };
+        accumulator_type filtering = { (pos = filter(pos, std::get<pool_type<Component> &>(pools)))... };
+
+        (void)filtering;
+        (void)probing;
     }
 
 private:
-    repo_type pools;
-    base_pool_type *view;
+    pattern_type pools;
+    const view_type *view;
+    unchecked_type unchecked;
 };
 
 

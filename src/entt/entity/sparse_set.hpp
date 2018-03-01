@@ -9,7 +9,7 @@
 #include <cstddef>
 #include <cassert>
 #include <type_traits>
-#include "traits.hpp"
+#include "entt_traits.hpp"
 
 
 namespace entt {
@@ -56,10 +56,10 @@ template<typename Entity>
 class SparseSet<Entity> {
     using traits_type = entt_traits<Entity>;
 
-    struct Iterator {
+    struct Iterator final {
         using value_type = Entity;
 
-        Iterator(const std::vector<Entity> *direct, std::size_t pos)
+        Iterator(const std::vector<value_type> &direct, std::size_t pos)
             : direct{direct}, pos{pos}
         {}
 
@@ -73,7 +73,7 @@ class SparseSet<Entity> {
         }
 
         bool operator==(const Iterator &other) const noexcept {
-            return other.pos == pos && other.direct == direct;
+            return other.pos == pos;
         }
 
         bool operator!=(const Iterator &other) const noexcept {
@@ -81,11 +81,11 @@ class SparseSet<Entity> {
         }
 
         value_type operator*() const noexcept {
-            return (*direct)[pos-1];
+            return direct[pos-1];
         }
 
     private:
-        const std::vector<Entity> *direct;
+        const std::vector<value_type> &direct;
         std::size_t pos;
     };
 
@@ -123,7 +123,7 @@ public:
      * If the new capacity is greater than the current capacity, new storage is
      * allocated, otherwise the method does nothing.
      *
-     * @tparam cap Desired capacity.
+     * @param cap Desired capacity.
      */
     void reserve(size_type cap) {
         reverse.reserve(cap);
@@ -184,7 +184,7 @@ public:
      * @return An iterator to the first element of the internal packed array.
      */
     iterator_type begin() const noexcept {
-        return Iterator{&direct, direct.size()};
+        return Iterator{direct, direct.size()};
     }
 
     /**
@@ -201,7 +201,7 @@ public:
      * internal packed array.
      */
     iterator_type end() const noexcept {
-        return Iterator{&direct, 0};
+        return Iterator{direct, 0};
     }
 
     /**
@@ -306,7 +306,9 @@ public:
     void swap(pos_type lhs, pos_type rhs) noexcept {
         assert(lhs < direct.size());
         assert(rhs < direct.size());
-        std::swap(reverse[direct[lhs]], reverse[direct[rhs]]);
+        const auto src = direct[lhs] & traits_type::entity_mask;
+        const auto dst = direct[rhs] & traits_type::entity_mask;
+        std::swap(reverse[src], reverse[dst]);
         std::swap(direct[lhs], direct[rhs]);
     }
 
@@ -419,7 +421,7 @@ public:
      * If the new capacity is greater than the current capacity, new storage is
      * allocated, otherwise the method does nothing.
      *
-     * @tparam cap Desired capacity.
+     * @param cap Desired capacity.
      */
     void reserve(size_type cap) {
         underlying_type::reserve(cap);
@@ -514,7 +516,7 @@ public:
     object_type & construct(entity_type entity, Args&&... args) {
         underlying_type::construct(entity);
         // emplace_back doesn't work well with PODs because of its placement new
-        instances.push_back({ std::forward<Args>(args)... });
+        instances.push_back(object_type{ std::forward<Args>(args)... });
         return instances.back();
     }
 
@@ -531,7 +533,9 @@ public:
      */
     void destroy(entity_type entity) override {
         // swapping isn't required here, we are getting rid of the last element
-        instances[underlying_type::get(entity)] = std::move(instances.back());
+        // however, we must protect ourselves from self assignments (see #37)
+        auto tmp = std::move(instances.back());
+        instances[underlying_type::get(entity)] = std::move(tmp);
         instances.pop_back();
         underlying_type::destroy(entity);
     }
@@ -610,11 +614,11 @@ public:
         auto to = other.end();
 
         pos_type pos = underlying_type::size() - 1;
-        const auto *direct = underlying_type::data();
+        const auto *local = underlying_type::data();
 
         while(pos > 0 && from != to) {
             if(underlying_type::has(*from)) {
-                if(*from != *(direct + pos)) {
+                if(*from != *(local + pos)) {
                     auto candidate = underlying_type::get(*from);
                     std::swap(instances[pos], instances[candidate]);
                     underlying_type::swap(pos, candidate);
