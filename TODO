@@ -1,11 +1,9 @@
-* filtered each (apply a filter to the entities before to return them, it helps separating checks from logic)
 * custom allocators and EnTT allocator-aware in general (long term feature, I don't actually need it at the moment) - see #22
 * to analyze, long term feature: systems organizer based on dependency graphs for implicit parallelism (I don't want to think anymore in future :-))
-* save/restore functionalities - see #27
-* parent-child relationships between entities directly managed by the registry. is it possible to do that in a clean and safe way?
-* blueprint registry - external tool, kind of factory to create entitites template for initialization
 * scene management (I prefer the concept of spaces, that is a kind of scene anyway)
-* raw view (affects sparse sets - custom iterator in derived one - and introduces a new kind of view): single component view to iterate components only instead of entities (in the right order!!)
-  it should speed up systems like rendering or whatever requires a single component and isn't interested in the entity, for it avoids the double check of the get
-* operator+/operator+= (-/-=) on sparse set iterators (required to partition arrays and split iteration on multiple threads)
+* blueprint registry - kind of factory to create entitites template for initialization (get rid of the extra versions of Registry::create)
+* review doc: separate it in multiple md/dox files, reduce the readme to a minimum and provide users with links to the online documentation on gh-pages
+* debugging tools (#60): the issue online already contains interesting tips on this, look at it
+* signals on component creation/destruction: crtp + internal detection, probably it works - test it!!
+* define a macro for the noexcept policy, so as to provide users with an easy way to disable exception handling
 * AOB

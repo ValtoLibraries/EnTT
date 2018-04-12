@@ -7,41 +7,51 @@
 
 # Table of Contents
 
-   * [Introduction](#introduction)
-   * [Build Instructions](#build-instructions)
-   * [Crash Course: entity-component system](#crash-course-entity-component-system)
-      * [Design choices](#design-choices)
-         * [A bitset-free entity-component system](#a-bitset-free-entity-component-system)
-         * [Pay per use](#pay-per-use)
-      * [Vademecum](#vademecum)
-      * [The Registry, the Entity and the Component](#the-registry-the-entity-and-the-component)
-         * [Single instance components](#single-instance-components)
-         * [Runtime components](#runtime-components)
-            * [A journey through a plugin](#a-journey-through-a-plugin)
-         * [Sorting: is it possible?](#sorting-is-it-possible)
-      * [View: to persist or not to persist?](#view-to-persist-or-not-to-persist)
-         * [Standard View](#standard-view)
-            * [Single component standard view](#single-component-standard-view)
-            * [Multi component standard view](#multi-component-standard-view)
-         * [Persistent View](#persistent-view)
-         * [Give me everything](#give-me-everything)
-      * [Side notes](#side-notes)
-   * [Crash Course: core functionalities](#crash-course-core-functionalities)
-      * [Compile-time identifiers](#compile-time-identifiers)
-      * [Runtime identifiers](#runtime-identifiers)
-      * [Hashed strings](#hashed-strings)
-   * [Crash Course: service locator](#crash-course-service-locator)
-   * [Crash Course: cooperative scheduler](#crash-course-cooperative-scheduler)
-      * [The process](#the-process)
-      * [The scheduler](#the-scheduler)
-   * [Crash Course: resource management](#crash-course-resource-management)
-      * [The resource, the loader and the cache](#the-resource-the-loader-and-the-cache)
-   * [Crash Course: events, signals and everything in between](#crash-course-events-signals-and-everything-in-between)
-      * [Signals](#signals)
-      * [Compile-time event bus](#compile-time-event-bus)
-      * [Delegate](#delegate)
-      * [Event dispatcher](#event-dispatcher)
-      * [Event emitter](#event-emitter)
+* [Introduction](#introduction)
+* [Build Instructions](#build-instructions)
+* [Crash Course: entity-component system](#crash-course-entity-component-system)
+   * [Design choices](#design-choices)
+      * [A bitset-free entity-component system](#a-bitset-free-entity-component-system)
+      * [Pay per use](#pay-per-use)
+   * [Vademecum](#vademecum)
+   * [The Registry, the Entity and the Component](#the-registry-the-entity-and-the-component)
+      * [Single instance components](#single-instance-components)
+      * [Runtime components](#runtime-components)
+         * [A journey through a plugin](#a-journey-through-a-plugin)
+      * [Sorting: is it possible?](#sorting-is-it-possible)
+      * [Snapshot: complete vs continuous](#snapshot-complete-vs-continuous)
+         * [Snapshot loader](#snapshot-loader)
+         * [Continuous loader](#continuous-loader)
+         * [Archives](#archives)
+         * [One example to rule them all](#one-example-to-rule-them-all)
+   * [View: to persist or not to persist?](#view-to-persist-or-not-to-persist)
+      * [Standard View](#standard-view)
+         * [Single component standard view](#single-component-standard-view)
+         * [Multi component standard view](#multi-component-standard-view)
+      * [Persistent View](#persistent-view)
+      * [Raw View](#raw-view)
+      * [Give me everything](#give-me-everything)
+   * [Side notes](#side-notes)
+* [Crash Course: core functionalities](#crash-course-core-functionalities)
+   * [Compile-time identifiers](#compile-time-identifiers)
+   * [Runtime identifiers](#runtime-identifiers)
+   * [Hashed strings](#hashed-strings)
+* [Crash Course: service locator](#crash-course-service-locator)
+* [Crash Course: cooperative scheduler](#crash-course-cooperative-scheduler)
+   * [The process](#the-process)
+   * [The scheduler](#the-scheduler)
+* [Crash Course: resource management](#crash-course-resource-management)
+   * [The resource, the loader and the cache](#the-resource-the-loader-and-the-cache)
+* [Crash Course: events, signals and everything in between](#crash-course-events-signals-and-everything-in-between)
+   * [Signals](#signals)
+   * [Compile-time event bus](#compile-time-event-bus)
+   * [Delegate](#delegate)
+   * [Event dispatcher](#event-dispatcher)
+   * [Event emitter](#event-emitter)
+* [License](#license)
+* [Support](#support)
+   * [Donation](#donation)
+   * [Hire me](#hire-me)
 
 # Introduction
 
@@ -55,8 +65,8 @@ that is used mostly in game development. For further details:
 * [ECS on Wikipedia](https://en.wikipedia.org/wiki/Entity%E2%80%93component%E2%80%93system)
 
 A long time ago, the sole entity-component system was part of the project. After
-a while the codebase has grown and more and more classes have become part
-of the repository.<br/>
+a while the codebase has grown and more and more classes have become part of the
+repository.<br/>
 That's why today it's called _the EnTT Framework_.
 
 Currently, `EnTT` is tested on Linux, Microsoft Windows and OS X. It has proven
@@ -74,7 +84,7 @@ Requests for feature, PR, suggestions ad feedback are highly appreciated.
 
 If you find you can help me and want to contribute to the `EnTT` framework with
 your experience or you do want to get part of the project for some other
-reason, feel free to contact me directly (you can find the mail in the
+reasons, feel free to contact me directly (you can find the mail in the
 [profile](https://github.com/skypjack)).<br/>
 I can't promise that each and every contribution will be accepted, but I can
 assure that I'll do my best to take them all seriously.
@@ -84,11 +94,11 @@ assure that I'll do my best to take them all seriously.
 Here is a brief list of what it offers today:
 
 * Statically generated integer identifiers for types (assigned either at
-compile-time or at runtime).
+  compile-time or at runtime).
 * A constexpr utility for human readable resource identifiers.
 * An incredibly fast entity-component system based on sparse sets, with its own
-views and a _pay for what you use_ policy to adjust performance and memory usage
-according to the users' requirements.
+  views and a _pay for what you use_ policy to adjust performance and memory
+  usage according to the users' requirements.
 * Actor class for those who aren't confident with entity-component systems.
 * The smallest and most basic implementation of a service locator ever seen.
 * A cooperative scheduler for processes of any type.
@@ -101,8 +111,8 @@ according to the users' requirements.
 
 Consider it a work in progress. For more details and an updated list, please
 refer to the [online documentation](https://skypjack.github.io/entt/). It
-probably contains much more. Moreover, the whole API is fully documented
-in-code for those who are brave enough to read it.<br/>
+probably contains much more. Moreover, the whole API is fully documented in-code
+for those who are brave enough to read it.<br/>
 Continue reading to know how the different parts of the project work or follow
 the link above to take a look at the API reference.
 
@@ -173,8 +183,7 @@ case.<br/>
 In the end, I did it, but it wasn't much satisfying. Actually it wasn't
 satisfying at all. The fastest and nothing more, fairly little indeed. When I
 realized it, I tried hard to keep intact the great performance of `EnTT` and to
-add all the features I wanted to see in *my* entity-component system at the same
-time.
+add all the features I wanted to see in *my own library* at the same time.
 
 Today `EnTT` is finally what I was looking for: still faster than its
 _competitors_, lower memory usage in the average case, a really good API and an
@@ -184,36 +193,47 @@ amazing set of features. And even more, of course.
 
 As it stands right now, `EnTT` is just fast enough for my requirements if
 compared to my first choice (it was already amazingly fast actually).<br/>
-Here is a comparison between the two (both of them compiled with GCC 7.2.0 on a
+Below is a comparison between the two (both of them compiled with GCC 7.3.0 on a
 Dell XPS 13 out of the mid 2014):
 
 | Benchmark | EntityX (compile-time) | EnTT |
 |-----------|-------------|-------------|
-| Create 10M entities | 0.1289s | **0.0423s** |
-| Destroy 10M entities | 0.0531s | **0.0221s** |
-| Standard view, 10M entities, one component | 0.0107s | **7.8e-08s** |
-| Standard view, 10M entities, two components | **0.0113s** | 0.0142s |
-| Standard view, 10M entities, two components<br/>Half of the entities have all the components | 0.0078s | **0.0072s** |
-| Standard view, 10M entities, two components<br/>One of the entities has all the components | 0.0071s | **5.5e-07s** |
-| Persistent view, 10M entities, two components | 0.0113s | **1.1e-07s** |
-| Standard view, 10M entities, five components | **0.0091s** | 0.0352s |
-| Persistent view, 10M entities, five components | 0.0091s | **2.5e-07s** |
-| Standard view, 10M entities, ten components | **0.0105s** | 0.0780s |
-| Standard view, 10M entities, ten components<br/>Half of the entities have all the components | **0.0090s** | 0.0407s |
-| Standard view, 10M entities, ten components<br/>One of the entities has all the components | 0.0070s | **1.3e-06s** |
-| Persistent view, 10M entities, ten components | 0.0105s | **5.0e-07s** |
-| Sort 150k entities, one component<br/>Arrays are in reverse order | - | **0.0040s** |
-| Sort 150k entities, enforce permutation<br/>Arrays are in reverse order | - | **0.0006s** |
+| Create 1M entities | 0.0167s | **0.0046s** |
+| Destroy 1M entities | 0.0053s | **0.0039s** |
+| Standard view, 1M entities, one component | 0.0012s | **1.9e-07s** |
+| Standard view, 1M entities, two components | 0.0012s | **3.8e-07s** |
+| Standard view, 1M entities, two components<br/>Half of the entities have all the components | 0.0009s | **3.8e-07s** |
+| Standard view, 1M entities, two components<br/>One of the entities has all the components | 0.0008s | **1.0e-06s** |
+| Persistent view, 1M entities, two components | 0.0012s | **2.8e-07s** |
+| Standard view, 1M entities, five components | 0.0010s | **7.0e-07s** |
+| Persistent view, 1M entities, five components | 0.0010s | **2.8e-07s** |
+| Standard view, 1M entities, ten components | 0.0011s | **1.2e-06s** |
+| Standard view, 1M entities, ten components<br/>Half of the entities have all the components | 0.0010s | **1.2e-06s** |
+| Standard view, 1M entities, ten components<br/>One of the entities has all the components | 0.0008s | **1.2e-06s** |
+| Persistent view, 1M entities, ten components | 0.0011s | **3.0e-07s** |
+| Raw view, 1M entities | - | **2.2e-07s** |
+| Sort 150k entities, one component<br/>Arrays are in reverse order | - | **0.0036s** |
+| Sort 150k entities, enforce permutation<br/>Arrays are in reverse order | - | **0.0005s** |
 
-`EnTT` includes its own tests and benchmarks. See
-[benchmark.cpp](https://github.com/skypjack/entt/blob/master/test/benchmark.cpp)
-for further details.<br/>
-On Github users can find also a
-[benchmark suite](https://github.com/abeimler/ecs_benchmark) that compares a
-bunch of different projects, one of which is `EnTT`.
+Note: The default version of `EntityX` (`master` branch) wasn't added to the
+comparison because it's already much slower than its compile-time counterpart.
 
-Probably I'll try to get out of `EnTT` more features and better performance in
-the future, mainly for fun.<br/>
+Pretty interesting, aren't them? In fact, these benchmarks are the same used by
+`EntityX` to show _how fast it is_. To be honest, they aren't so good and these
+results shouldn't be taken much seriously (they are completely unrealistic
+indeed).<br/>
+The proposed entity-component system is incredibly fast to iterate entities,
+this is a fact. The compiler can make a lot of optimizations because of how
+`EnTT` works, even more when components aren't used at all. This is exactly the
+case for these benchmarks.<br/>
+This is why they are completely wrong and cannot be used to evaluate any of the
+entity-component systems.
+
+If you decide to use `EnTT`, choose it because of its API and its performance,
+not because there is a benchmark somewhere that makes it seem the fastest.
+
+Probably I'll try to get out of `EnTT` more features and even better performance
+in the future, mainly for fun.<br/>
 If you want to contribute and/or have any suggestion, feel free to make a PR or
 open an issue to discuss your idea.
 
@@ -324,11 +344,11 @@ many others besides me.
 
 ## Vademecum
 
-The `Registry` to store, the `View` to iterate. That's all.
+The `Registry` to store, the views to iterate. That's all.
 
 An entity (the _E_ of an _ECS_) is an opaque identifier that users should just
 use as-is and store around if needed. Do not try to inspect an entity
-identifier, its type can change in future and a registry offers all the
+identifier, its format can change in future and a registry offers all the
 functionalities to query them out-of-the-box. The underlying type of an entity
 (either `std::uint16_t`, `std::uint32_t` or `std::uint64_t`) can be specified
 when defining a registry (actually the `DefaultRegistry` is nothing more than a
@@ -340,10 +360,9 @@ and move assignable. They are list initialized by using the parameters provided
 to construct the component itself. No need to register components or their types
 neither with the registry nor with the entity-component system at all.<br/>
 Systems (the _S_ of an _ECS_) are just plain functions, functors, lambdas or
-whatever the users want. They can accept a `Registry`, a `View` or a
-`PersistentView` and use them the way they prefer. No need to register systems
-or their types neither with the registry nor with the entity-component system at
-all.
+whatever the users want. They can accept a `Registry` or a view of any type and
+use them the way they prefer. No need to register systems or their types neither
+with the registry nor with the entity-component system at all.
 
 The following sections will explain in short how to use the entity-component
 system, the core part of the whole framework.<br/>
@@ -427,21 +446,21 @@ velocity.dy = 0.;
 ```
 
 In case users want to assign a component to an entity, but it's unknown whether
-the entity already has it or not, `accomodate` does the work in a single call
+the entity already has it or not, `accommodate` does the work in a single call
 (there is a performance penalty to pay for this mainly due to the fact that it
 has to check if the entity already has the given component or not):
 
 ```cpp
-registry.accomodate<Position>(entity, 0., 0.);
+registry.accommodate<Position>(entity, 0., 0.);
 
 // ...
 
-Velocity &velocity = registry.accomodate<Velocity>(entity);
+Velocity &velocity = registry.accommodate<Velocity>(entity);
 velocity.dx = 0.;
 velocity.dy = 0.;
 ```
 
-Note that `accomodate` is a sliglhty faster alternative for the following
+Note that `accommodate` is a slightly faster alternative for the following
 `if`/`else` statement and nothing more:
 
 ```cpp
@@ -479,14 +498,14 @@ registry.reset<Position>(entity);
 There exist also two other _versions_ of the `reset` member function:
 
 * If no entity is passed to it, `reset` will remove the given component from
-each entity that has it:
+  each entity that has it:
 
   ```cpp
   registry.reset<Position>();
   ```
 
 * If neither the entity nor the component are specified, all the entities still
-in use and their components are destroyed:
+  in use and their components are destroyed:
 
   ```cpp
   registry.reset();
@@ -537,7 +556,19 @@ registry.remove<PlayingCharacter>();
 registry.remove<Camera>();
 ```
 
-If in doubt about whether or not a tag has already an owner, the `has` member
+In case a tag already has an owner, its content can be updated by means of the
+`set` member function template and the ownership of the tag can be transferred
+to another entity using the `move` member function template:
+
+```
+// replaces the content of the given tag
+Point &point = registry.set<Point>(1.f, 1.f);
+
+// transfers the ownership of the tag to another entity
+entity_type prev = registry.move<Point>(next);
+```
+
+If in doubt about whether or not a tag already has an owner, the `has` member
 function template may be useful:
 
 ```cpp
@@ -645,58 +676,323 @@ In fact, there are two functions that respond to slightly different needs:
   In this case, instances of `Movement` are arranged in memory so that cache
   misses are minimized when the two components are iterated together.
 
+### Snapshot: complete vs continuous
+
+The `Registry` class offers basic support to serialization.<br/>
+It doesn't convert components and tags to bytes directly, there wasn't the need
+of another tool for serialization out there. Instead, it accepts an opaque
+object with a suitable interface (namely an _archive_) to serialize its internal
+data structures and restore them later. The way types and instances are
+converted to a bunch of bytes is completely in charge to the archive and thus to
+the users.
+
+The goal of the serialization part is to allow users to make both a dump of the
+entire registry or a narrower snapshot, that is to select only the components
+and the tags in which they are interested.<br/>
+Intuitively, the use cases are different. As an example, the first approach is
+suitable for local save/restore functionalities while the latter is suitable for
+creating client-server applications and for transferring somehow parts of the
+representation side to side.
+
+To take a snapshot of the registry, use the `snapshot` member function. It
+returns a temporary object properly initialized to _save_ the whole registry or
+parts of it.
+
+Example of use:
+
+```cpp
+OutputArchive output;
+
+registry.snapshot()
+    .entities(output)
+    .destroyed(output)
+    .component<AComponent, AnotherComponent>(output)
+    .tag<MyTag>(output);
+```
+
+It isn't necessary to invoke all these functions each and every time. What
+functions to use in which case mostly depends on the goal and there is not a
+golden rule to do that.
+
+The `entities` member function asks to the registry to serialize all the
+entities that are still in use along with their versions. On the other side, the
+`destroyed` member function tells to the registry to serialize the entities that
+have been destroyed and are no longer in use.<br/>
+These two functions can be used to save and restore the whole set of entities
+with the versions they had during serialization.
+
+The `component` member function is a function template the aim of which is to
+store aside components. The presence of a template parameter list is a
+consequence of a couple of design choices from the past and in the present:
+
+* First of all, there is no reason to force an user to serialize all the
+  components at once and most of the times it isn't desiderable. As an example,
+  in case the stuff for the HUD in a game is put into the registry for some
+  reasons, its components can be freely discarded during a serialization step
+  because probably the software already knows how to reconstruct the HUD
+  correctly from scratch.
+
+* Furthermore, the registry makes heavy use of _type-erasure_ techniques
+  internally and doesn't know at any time what types of components it contains.
+  Therefore being explicit at the call point is mandatory.
+
+The `tag` member function is similar to the previous one, apart from the fact
+that it works with tags and not with components.<br/>
+Note also that both `component` and `tag` store items along with entities. It
+means that they work properly without a call to the `entities` member function.
+
+Once a snapshot is created, there exist mainly two _ways_ to load it: as a whole
+and in a kind of _continuous mode_.<br/>
+The following sections describe both loaders and archives in details.
+
+#### Snapshot loader
+
+A snapshot loader requires that the destination registry be empty and loads all
+the data at once while keeping intact the identifiers that the entities
+originally had.<br/>
+To do that, the registry offers a member function named `restore` that returns a
+temporary object properly initialized to _restore_ a snapshot.
+
+Example of use:
+
+```cpp
+InputArchive input;
+
+registry.restore()
+    .entities()
+    .destroyed()
+    .component<AComponent, AnotherComponent>(output)
+    .tag<MyTag>(output)
+    .orphans();
+```
+
+It isn't necessary to invoke all these functions each and every time. What
+functions to use in which case mostly depends on the goal and there is not a
+golden rule to do that. For obvious reasons, what is important is that the data
+are restored in exactly the same order in which they were serialized.
+
+The `entities` and `destroyed` member functions restore the sets of entities and
+the versions that the entities originally had at the source.
+
+The `component` member function restores all and only the components specified
+and assigns them to the right entities. Note that the template parameter list
+must be exactly the same used during the serialization. The same applies to the
+`tag` member function.
+
+The `orphans` member function literally destroys those entities that have
+neither components nor tags. It's usually useless if the snapshot is a full dump
+of the source. However, in case all the entities are serialized but only few
+components and tags are saved, it could happen that some of the entities have
+neither components nor tags once restored. The best users can do to deal with
+them is to destroy those entities and thus update their versions.
+
+#### Continuous loader
+
+A continuous loader is designed to load data from a source registry to a
+(possibly) non-empty destination. The loader can accomodate in a registry more
+than one snapshot in a sort of _continuous loading_ that updates the
+destination one step at a time.<br/>
+Identifiers that entities originally had are not transferred to the target.
+Instead, the loader maps remote identifiers to local ones while restoring a
+snapshot. Because of that, this kind of loader offers a way to update
+automatically identifiers that are part of components or tags (as an example, as
+data members or gathered in a container).<br/>
+Another difference with the snapshot loader is that the continuous loader does
+not need to work with the private data structures of a registry. Furthermore, it
+has an internal state that must persist over time. Therefore, there is no reason
+to create it by means of a registry, or to limit its lifetime to that of a
+temporary object.
+
+Example of use:
+
+```cpp
+entt::ContinuousLoader<entity_type> loader{registry};
+InputArchive input;
+
+loader.entities(input)
+    .destroyed(input)
+    .component<AComponent, AnotherComponent>(input)
+    .component<DirtyComponent>(input, &DirtyComponent::parent, &DirtyComponent::child)
+    .tag<MyTag>(input)
+    .tag<DirtyTag>(input, &DirtyTag::container)
+    .orphans()
+    .shrink();
+```
+
+It isn't necessary to invoke all these functions each and every time. What
+functions to use in which case mostly depends on the goal and there is not a
+golden rule to do that. For obvious reasons, what is important is that the data
+are restored in exactly the same order in which they were serialized.
+
+The `entities` and `destroyed` member functions restore groups of entities and
+map each entity to a local counterpart when required. In other terms, for each
+remote entity identifier not yet registered by the loader, the latter creates a
+local identifier so that it can keep the local entity in sync with the remote
+one.
+
+The `component` and `tag` member functions restore all and only the components
+and the tags specified and assign them to the right entities.<br/>
+In case the component or the tag contains entities itself (either as data
+members of type `entity_type` or as containers of entities), the loader can
+update them automatically. To do that, it's enough to specify the data members
+to update as shown in the example. If the component or the tag was in the middle
+of the template parameter list during serialization, multiple commands are
+required during a restore:
+
+```cpp
+registry.snapshot().component<ASimpleComponent, AnotherSimpleComponent, AMoreComplexComponent, TheLastComponent>();
+
+// ...
+
+loader
+    .component<ASimpleComponent, AnotherSimpleComponent>(input)
+    .component<AMoreComplexComponent>(input, &AMoreComplexComponent::entity);
+    .component<TheLastComponent>(input);
+```
+
+The `orphans` member function literally destroys those entities that have
+neither components nor tags after a restore. It has exactly the same purpose
+described in the previous section and works the same way.
+
+Finally, `shrink` helps to purge local entities that no longer have a remote
+conterpart. Users should invoke this member function after restoring each
+snapshot, unless they know exactly what they are doing.
+
+#### Archives
+
+Archives must publicly expose a predefined set of member functions. The API is
+straightforward and consists only of a group of function call operators that
+are invoked by the registry.
+
+In particular:
+
+* An output archive, the one used when creating a snapshot, must expose a
+  function call operator with the following signature to store entities:
+
+  ```cpp
+  void operator()(Entity);
+  ```
+
+  Where `Entity` is the type of the entities used by the registry.<br/>
+  In addition, it must accept the types of both the components and the tags to
+  serialize. Therefore, given a type `T` (either a component or a tag), it must
+  contain a function call operator with the following signature:
+
+  ```cpp
+  void operator()(const T &);
+  ```
+
+  The output archive can freely decide how to serialize the data. The register
+  is not affected at all by the decision.
+
+* An input archive, the one used when restoring a snapshot, must expose a
+  function call operator with the following signature to load entities:
+
+  ```cpp
+  void operator()(Entity &);
+  ```
+
+  Where `Entity` is the type of the entities used by the registry. Each time the
+  function is invoked, the archive must read the next element from the
+  underlying storage and copy it in the given variable.<br/>
+  In addition, it must accept the types of both the components and the tags to
+  restore. Therefore, given a type `T` (either a component or a tag), it must
+  contain a function call operator with the following signature:
+
+  ```cpp
+  void operator()(T &);
+  ```
+
+  Every time such an operator is invoked, the archive must read the next element
+  from the underlying storage and copy it in the given variable.
+
+#### One example to rule them all
+
+`EnTT` comes with some examples (actually some tests) that show how to integrate
+a well known library for serialization as an archive. It uses
+[`Cereal C++`](https://uscilab.github.io/cereal/) under the hood, mainly
+because I wanted to learn how it works at the time I was writing the code.
+
+The code is not production-ready and it isn't neither the only nor (probably)
+the best way to do it. However, feel free to use it at your own risk.
+
+The basic idea is to store everything in a group of queues in memory, then bring
+everything back to the registry with different loaders.
+
 ## View: to persist or not to persist?
 
-There are mainly two kinds of views: standard (also known as `View`) and
-persistent (also known as `PersistentView`).<br/>
-Both of them have pros and cons to take in consideration. In particular:
+First of all, it is worth answering an obvious question: why views?<br/>
+Roughly speaking, they are a good tool to enforce single responsibility. A
+system that has access to a registry can create and destroy entities, as well as
+assign and remove components. On the other side, a system that has access to a
+view can only iterate entities and their components, then read or update the
+data members of the latter.<br/>
+It is a subtle difference that can help designing a better software sometimes.
+
+There are mainly three kinds of views: standard (also known as `View`),
+persistent (also known as `PersistentView`) and raw (also known as
+`RawView`).<br/>
+All of them have pros and cons to take in consideration. In particular:
 
 * Standard views:
 
   Pros:
-  * They work out-of-the-box and don't require any dedicated data
-    structure.
-  * Creating and destroying them isn't expensive at all because they don't
-    have any type of initialization.
-  * They are the best tool to iterate single components.
-  * They are the best tool to iterate multiple components at once when one of
-    the components is assigned to a significantly low number of entities.
+  * They work out-of-the-box and don't require any dedicated data structure.
+  * Creating and destroying them isn't expensive at all because they don't have
+    any type of initialization.
+  * They are the best tool for iterating entities for a single component.
+  * They are the best tool for iterating entities for multiple components when
+    one of the components is assigned to a significantly low number of entities.
   * They don't affect any other operations of the registry.
 
   Cons:
-  * Their performance tend to degenerate when the number of components
-    to iterate grows up and the most of the entities have all of them.
+  * Their performance tend to degenerate when the number of components to
+    iterate grows up and the most of the entities have all of them.
 
 * Persistent views:
 
   Pros:
-  * Once prepared, creating and destroying them isn't expensive at all
-    because they don't have any type of initialization.
-  * They are the best tool to iterate multiple components at once when
-    the most of the entities have all of them.
+  * Once prepared, creating and destroying them isn't expensive at all because
+    they don't have any type of initialization.
+  * They are the best tool for iterating entities for mmultiple components and
+    most entities have them all.
 
   Cons:
-    * They have dedicated data structures and thus affect the memory usage to a
-      minimal extent.
-    * If not previously prepared, the first time they are used they go
-      through an initialization step that could take a while.
-    * They affect to a minimum the creation and destruction of entities and
-      components. In other terms: the more persistent views there will be,
-      the less performing will be creating and destroying entities and
-      components.
+  * They have dedicated data structures and thus affect the memory usage to a
+    minimal extent.
+  * If not previously prepared, the first time they are used they go through an
+    initialization step that could take a while.
+  * They affect to a minimum the creation and destruction of entities and
+    components. In other terms: the more persistent views there will be, the
+    less performing will be creating and destroying entities and components.
 
-To sum up and as a rule of thumb, use a standard view:
-* To iterate entities for a single component.
-* To iterate entities for multiple components when a significantly low
-  number of entities have one of the components.
-* In all those cases where a persistent view would give a boost to
-  performance but the iteration isn't performed frequently.
+* Raw views:
 
-Use a persistent view in all the other cases.
+  Pros:
+  * They work out-of-the-box and don't require any dedicated data structure.
+  * Creating and destroying them isn't expensive at all because they don't have
+    any type of initialization.
+  * They are the best tool for iterating components when it is not necessary to
+    know which entities they belong to.
+  * They don't affect any other operations of the registry.
 
-To easily iterate entities, all the views offer the common `begin` and `end`
-member functions that allow users to use a view in a typical range-for
-loop.<br/>
+  Cons:
+  * They can be used to iterate only one type of component at a time.
+  * They don't return the entity to which a component belongs to the caller.
+
+To sum up and as a rule of thumb:
+* Use a raw view to iterate components only (no entities) for a given type.
+* Use a standard view to iterate entities for a single component.
+* Use a standard view to iterate entities for multiple components when a
+  significantly low number of entities have one of the components.
+* Use a standard view in all those cases where a persistent view would give a
+  boost to performance but the iteration isn't performed frequently.
+* Prepare and use a persistent view in all the other cases.
+
+To easily iterate entities and components, all the views offer the common
+`begin` and `end` member functions that allow users to use a view in a typical
+range-for loop. Almost all the views offer also a *more functional* `each`
+member function that accepts a callback for convenience.<br/>
 Continue reading for more details or refer to the
 [official documentation](https://skypjack.github.io/entt/).
 
@@ -724,14 +1020,14 @@ terms of performance in all the situation. This kind of views can access the
 underlying data structures directly and avoid superfluous checks.<br/>
 They offer a bunch of functionalities to get the number of entities they are
 going to return and a raw access to the entity list as well as to the component
-list.<br/>
+list. It's also possible to ask a view if it contains a given entity.<br/>
 Refer to the [official documentation](https://skypjack.github.io/entt/) for all
 the details.
 
 There is no need to store views around for they are extremely cheap to
-construct, even though they can be copied without problems and reused
-freely. In fact, they return newly created and correctly initialized iterators
-whenever `begin` or `end` are invoked.<br/>
+construct, even though they can be copied without problems and reused freely. In
+fact, they return newly created and correctly initialized iterators whenever
+`begin` or `end` are invoked.<br/>
 To iterate a single component standard view, either use it in range-for loop:
 
 ```cpp
@@ -763,19 +1059,21 @@ mind that it works only with the components of the view itself.
 #### Multi component standard view
 
 Multi component standard views iterate entities that have at least all the given
-components in their bags. During construction, these views look at the number
-of entities available for each component and pick up a reference to the smallest
+components in their bags. During construction, these views look at the number of
+entities available for each component and pick up a reference to the smallest
 set of candidates in order to speed up iterations.<br/>
 They offer fewer functionalities than their companion views for single
-component, the most important of which can be used to reset the view and refresh
-the reference to the set of candidate entities to iterate.<br/>
+component. In particular, a multi component standard view exposes utility
+functions to reset its internal state (optimization purposes) and to get the
+estimated number of entities it is going to return. It's also possible to ask a
+view if it contains a given entity.<br/>
 Refer to the [official documentation](https://skypjack.github.io/entt/) for all
 the details.
 
 There is no need to store views around for they are extremely cheap to
-construct, even though they can be copied without problems and reused
-freely. In fact, they return newly created and correctly initialized iterators
-whenever `begin` or `end` are invoked.<br/>
+construct, even though they can be copied without problems and reused freely. In
+fact, they return newly created and correctly initialized iterators whenever
+`begin` or `end` are invoked.<br/>
 To iterate a multi component standard view, either use it in range-for loop:
 
 ```cpp
@@ -825,9 +1123,9 @@ auto view = registry.persistent<Position, Velocity>();
 ```
 
 There is no need to store views around for they are extremely cheap to
-construct, even though they can be copied without problems and reused
-freely. In fact, they return newly created and correctly initialized iterators
-whenever `begin` or `end` are invoked.<br/>
+construct, even though they can be copied without problems and reused freely. In
+fact, they return newly created and correctly initialized iterators whenever
+`begin` or `end` are invoked.<br/>
 That being said, persistent views perform an initialization step the very first
 time they are constructed and this could be quite costly. To avoid it, consider
 asking to the registry to _prepare_ them when no entities have been created yet:
@@ -844,7 +1142,8 @@ immediately and does nothing.
 A persistent view offers a bunch of functionalities to get the number of
 entities it's going to return, a raw access to the entity list and the
 possibility to sort the underlying data structures according to the order of one
-of the components for which it has been constructed.<br/>
+of the components for which it has been constructed. It's also possible to ask a
+view if it contains a given entity.<br/>
 Refer to the [official documentation](https://skypjack.github.io/entt/) for all
 the details.
 
@@ -880,6 +1179,35 @@ whether all the components have to be accessed or not.
 **Note**: prefer the `get` member function of a view instead of the `get` member
 function template of a registry during iterations, if possible. However, keep in
 mind that it works only with the components of the view itself.
+
+### Raw View
+
+Raw views return all the components of a given type. This kind of views can
+access components directly and avoid extra indirections as if components were
+accessed via an entity identifier.<br/>
+They offer a bunch of functionalities to get the number of instances they are
+going to return and a raw access to the entity list as well as to the component
+list.<br/>
+Refer to the [official documentation](https://skypjack.github.io/entt/) for all
+the details.
+
+There is no need to store views around for they are extremely cheap to
+construct, even though they can be copied without problems and reused freely. In
+fact, they return newly created and correctly initialized iterators whenever
+`begin` or `end` are invoked.<br/>
+To iterate a raw view, use it in range-for loop:
+
+```cpp
+auto view = registry.raw<Renderable>();
+
+for(auto &&component: raw) {
+    // ...
+}
+```
+
+**Note**: raw views don't have the `each` nor the `get` member function for
+obvious reasons. The former would only return the components and therefore it
+would be redundant, the latter isn't required at all.
 
 ### Give me everything
 
@@ -967,6 +1295,17 @@ not be used frequently to avoid the risk of a performance hit.
   As a trivial example, users can freely execute the rendering system and
   iterate the renderable entities while updating a physic component concurrently
   on a separate thread.
+
+* In general, the entire registry isn't thread safe as it is. Thread safety
+  isn't something that users should want out of the box for several reasons.
+  Just to mention one of them: performance.<br/>
+  This kind of entity-component systems can be used in single threaded
+  applications as well as along with async stuff. Moreover, typical thread based
+  models for ECS don't require a fully thread safe registry to work. Actually
+  one could reach the goal with the registry as it is while working with most of
+  the common models, after all.<br/>
+  Because of the few reasons mentioned above and many others not mentioned,
+  users are completely responsible for synchronization whether required.
 
 # Crash Course: core functionalities
 
@@ -1600,7 +1939,7 @@ There are two types of signal handlers in `EnTT`, internally called _managed_
 and _unmanaged_.<br/>
 They differ in the way they work around the tradeoff between performance, memory
 usage and safety. Managed listeners must be wrapped in an `std::shared_ptr` and
-the sink will take care of disconneting them whenever they die. Unmanaged
+the sink will take care of disconnecting them whenever they die. Unmanaged
 listeners can be any kind of objects and the client is in charge of connecting
 and disconnecting them from a sink to avoid crashes due to different lifetimes.
 
@@ -1975,7 +2314,7 @@ As an example:
 
 ```cpp
 dispatcher.trigger<AnEvent>(42);
-dispatcher.trigget<AnotherEvent>();
+dispatcher.trigger<AnotherEvent>();
 ```
 
 Listeners are invoked immediately, order of execution isn't guaranteed. This
@@ -2141,7 +2480,9 @@ Code released under
 Docs released under
 [Creative Commons](https://github.com/skypjack/entt/blob/master/docs/LICENSE).
 
-# Donation
+# Support
+
+## Donation
 
 Developing and maintaining `EnTT` takes some time and lots of coffee. I'd like
 to add more and more functionalities in future and turn it in a full-featured
@@ -2151,3 +2492,11 @@ Italy, we're used to turning the best coffee ever in code. If you find that
 it's not enough, feel free to support me the way you prefer.<br/>
 Take a look at the donation button at the top of the page for more details or
 just click [here](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=W2HF9FESD5LJY&lc=IT&item_name=Michele%20Caini&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted).
+
+## Hire me
+
+If you start using `EnTT` and need help, if you want a new feature and want me
+to give it the highest priority, if you have any other reason to contact me:
+do not hesitate. I'm available for hiring.<br/>
+Feel free to take a look at my [profile](https://github.com/skypjack) and
+contact me by mail.

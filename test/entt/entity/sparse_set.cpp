@@ -21,6 +21,7 @@ TEST(SparseSetNoType, Functionalities) {
     ASSERT_NE(set.begin(), set.end());
     ASSERT_FALSE(set.has(0));
     ASSERT_TRUE(set.has(42));
+    ASSERT_TRUE(set.fast(42));
     ASSERT_EQ(set.get(42), 0u);
 
     set.destroy(42);
@@ -63,12 +64,20 @@ TEST(SparseSetNoType, DataBeginEnd) {
     ASSERT_EQ(*(set.data() + 1u), 12u);
     ASSERT_EQ(*(set.data() + 2u), 42u);
 
+    auto it = set.begin();
+
+    ASSERT_EQ(*it, 42u);
+    ASSERT_EQ(*(it+1), 12u);
+    ASSERT_EQ(*(it+2), 3u);
+    ASSERT_EQ(it += 3, set.end());
+
     auto begin = set.begin();
     auto end = set.end();
 
     ASSERT_EQ(*(begin++), 42u);
     ASSERT_EQ(*(begin++), 12u);
     ASSERT_EQ(*(begin++), 3u);
+
     ASSERT_EQ(begin, end);
 }
 
@@ -252,6 +261,7 @@ TEST(SparseSetWithType, Functionalities) {
     ASSERT_NE(set.begin(), set.end());
     ASSERT_FALSE(set.has(0));
     ASSERT_TRUE(set.has(42));
+    ASSERT_TRUE(set.fast(42));
     ASSERT_EQ(set.get(42), 3);
 
     set.destroy(42);
@@ -310,9 +320,9 @@ TEST(SparseSetWithType, RawBeginEnd) {
     auto begin = set.begin();
     auto end = set.end();
 
-    ASSERT_EQ(set.get(*(begin++)), 9);
-    ASSERT_EQ(set.get(*(begin++)), 6);
-    ASSERT_EQ(set.get(*(begin++)), 3);
+    ASSERT_EQ(*(begin++), 9);
+    ASSERT_EQ(*(begin++), 6);
+    ASSERT_EQ(*(begin++), 3);
     ASSERT_EQ(begin, end);
 }
 
@@ -344,11 +354,11 @@ TEST(SparseSetWithType, SortOrdered) {
     auto begin = set.begin();
     auto end = set.end();
 
-    ASSERT_EQ(set.get(*(begin++)), 1);
-    ASSERT_EQ(set.get(*(begin++)), 3);
-    ASSERT_EQ(set.get(*(begin++)), 6);
-    ASSERT_EQ(set.get(*(begin++)), 9);
-    ASSERT_EQ(set.get(*(begin++)), 12);
+    ASSERT_EQ(*(begin++), 1);
+    ASSERT_EQ(*(begin++), 3);
+    ASSERT_EQ(*(begin++), 6);
+    ASSERT_EQ(*(begin++), 9);
+    ASSERT_EQ(*(begin++), 12);
     ASSERT_EQ(begin, end);
 }
 
@@ -380,11 +390,11 @@ TEST(SparseSetWithType, SortReverse) {
     auto begin = set.begin();
     auto end = set.end();
 
-    ASSERT_EQ(set.get(*(begin++)), 1);
-    ASSERT_EQ(set.get(*(begin++)), 3);
-    ASSERT_EQ(set.get(*(begin++)), 6);
-    ASSERT_EQ(set.get(*(begin++)), 9);
-    ASSERT_EQ(set.get(*(begin++)), 12);
+    ASSERT_EQ(*(begin++), 1);
+    ASSERT_EQ(*(begin++), 3);
+    ASSERT_EQ(*(begin++), 6);
+    ASSERT_EQ(*(begin++), 9);
+    ASSERT_EQ(*(begin++), 12);
     ASSERT_EQ(begin, end);
 }
 
@@ -416,11 +426,11 @@ TEST(SparseSetWithType, SortUnordered) {
     auto begin = set.begin();
     auto end = set.end();
 
-    ASSERT_EQ(set.get(*(begin++)), 1);
-    ASSERT_EQ(set.get(*(begin++)), 3);
-    ASSERT_EQ(set.get(*(begin++)), 6);
-    ASSERT_EQ(set.get(*(begin++)), 9);
-    ASSERT_EQ(set.get(*(begin++)), 12);
+    ASSERT_EQ(*(begin++), 1);
+    ASSERT_EQ(*(begin++), 3);
+    ASSERT_EQ(*(begin++), 6);
+    ASSERT_EQ(*(begin++), 9);
+    ASSERT_EQ(*(begin++), 12);
     ASSERT_EQ(begin, end);
 }
 
@@ -433,9 +443,9 @@ TEST(SparseSetWithType, RespectDisjoint) {
     lhs.construct(12, 6);
     lhs.construct(42, 9);
 
-    ASSERT_EQ(lhs.get(3), 3);
-    ASSERT_EQ(lhs.get(12), 6);
-    ASSERT_EQ(lhs.get(42), 9);
+    ASSERT_EQ(clhs.get(3), 3);
+    ASSERT_EQ(clhs.get(12), 6);
+    ASSERT_EQ(clhs.get(42), 9);
 
     lhs.respect(rhs);
 
@@ -443,12 +453,12 @@ TEST(SparseSetWithType, RespectDisjoint) {
     ASSERT_EQ(*(clhs.raw() + 1u), 6);
     ASSERT_EQ(*(clhs.raw() + 2u), 9);
 
-    auto begin = clhs.begin();
-    auto end = clhs.end();
+    auto begin = lhs.begin();
+    auto end = lhs.end();
 
-    ASSERT_EQ(clhs.get(*(begin++)), 9);
-    ASSERT_EQ(clhs.get(*(begin++)), 6);
-    ASSERT_EQ(clhs.get(*(begin++)), 3);
+    ASSERT_EQ(*(begin++), 9);
+    ASSERT_EQ(*(begin++), 6);
+    ASSERT_EQ(*(begin++), 3);
     ASSERT_EQ(begin, end);
 }
 
@@ -462,9 +472,9 @@ TEST(SparseSetWithType, RespectOverlap) {
     lhs.construct(42, 9);
     rhs.construct(12, 6);
 
-    ASSERT_EQ(lhs.get(3), 3);
-    ASSERT_EQ(lhs.get(12), 6);
-    ASSERT_EQ(lhs.get(42), 9);
+    ASSERT_EQ(clhs.get(3), 3);
+    ASSERT_EQ(clhs.get(12), 6);
+    ASSERT_EQ(clhs.get(42), 9);
     ASSERT_EQ(rhs.get(12), 6);
 
     lhs.respect(rhs);
@@ -473,12 +483,12 @@ TEST(SparseSetWithType, RespectOverlap) {
     ASSERT_EQ(*(clhs.raw() + 1u), 9);
     ASSERT_EQ(*(clhs.raw() + 2u), 6);
 
-    auto begin = clhs.begin();
-    auto end = clhs.end();
+    auto begin = lhs.begin();
+    auto end = lhs.end();
 
-    ASSERT_EQ(clhs.get(*(begin++)), 6);
-    ASSERT_EQ(clhs.get(*(begin++)), 9);
-    ASSERT_EQ(clhs.get(*(begin++)), 3);
+    ASSERT_EQ(*(begin++), 6);
+    ASSERT_EQ(*(begin++), 9);
+    ASSERT_EQ(*(begin++), 3);
     ASSERT_EQ(begin, end);
 }
 
@@ -618,4 +628,34 @@ TEST(SparseSetWithType, RespectUnordered) {
     ASSERT_EQ(*(rhs.data() + 3u), 3u);
     ASSERT_EQ(*(rhs.data() + 4u), 4u);
     ASSERT_EQ(*(rhs.data() + 5u), 5u);
+}
+
+TEST(SparseSetWithType, ReferencesGuaranteed) {
+    struct Type { int value; };
+
+    entt::SparseSet<unsigned int, Type> set;
+
+    set.construct(0, 0);
+    set.construct(1, 1);
+
+    ASSERT_EQ(set.get(0).value, 0);
+    ASSERT_EQ(set.get(1).value, 1);
+
+    for(auto &&type: set) {
+        if(type.value) {
+            type.value = 42;
+        }
+    }
+
+    ASSERT_EQ(set.get(0).value, 0);
+    ASSERT_EQ(set.get(1).value, 42);
+
+    auto begin = set.begin();
+
+    while(begin != set.end()) {
+        (begin++)->value = 3;
+    }
+
+    ASSERT_EQ(set.get(0).value, 3);
+    ASSERT_EQ(set.get(1).value, 3);
 }
